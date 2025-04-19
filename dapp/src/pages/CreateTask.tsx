@@ -1,12 +1,17 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { useCurrentAccount } from '@mysten/dapp-kit';
-import { Container, Heading, Table } from '@radix-ui/themes';
+import { useCurrentAccount, useSuiClient, useSignAndExecuteTransaction } from '@mysten/dapp-kit';
+import { Container, Heading, Table, Button, Flex, Text, Box } from '@radix-ui/themes';
+import * as Dialog from '@radix-ui/react-dialog';
 import TaskForm from '../components/TaskForm';
 import { TaskConfig } from '../types/task';
 import priceDataProvider, { PriceComparisonData, PriceData } from '../priceMonitor/priceDataProvider';
+import { TransactionBlock } from '@mysten/sui.js/transactions';
+import type { SuiTransactionBlockResponse } from '@mysten/sui.js/client';
 
 export default function CreateTask() {
   const currentAccount = useCurrentAccount();
+  const suiClient = useSuiClient();
+  const { mutate: signAndExecuteTransaction } = useSignAndExecuteTransaction();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [comparisonData, setComparisonData] = useState<PriceComparisonData[]>([]);
@@ -16,6 +21,10 @@ export default function CreateTask() {
     key: 'spread',
     direction: 'descending'
   });
+  
+  // 弹窗状态
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+  const [transactionId, setTransactionId] = useState('');
   
   // 在TaskForm ref上保存引用，以便可以调用TaskForm中的方法
   const taskFormRef = useRef<any>(null);
@@ -142,18 +151,97 @@ export default function CreateTask() {
       setIsLoading(true);
       setError(null);
 
-      // TODO: Call smart contract to create task
+      if (!currentAccount) {
+        setError('请先连接钱包');
+        return;
+      }
+
       console.log('Creating task:', task);
       
-      // Simulate task creation
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      alert('Task created successfully!');
-      // 成功后清除选中状态
-      setSelectedComparison(null);
+      // 调用Sui合约创建任务
+      try {
+        // 合约包ID
+        const packageId = '0x0ab66ff86fbbc74056dc9bfcfdcb7b12f0419e26eccc97fc37cab758c70b1cb7';
+        
+        // 创建交易
+        const tx = new TransactionBlock();
+        
+        // 将chain_pairs转换为适合合约的格式
+        // 修改：将字符串数组作为参数传递，而不是连接成单个字符串
+        const chainsArray = task.chain_pairs.map(pair => {
+          // 从chain_pairs中提取链名称 (从 "ethereum:ETH-USDT" 格式转为 "ethereum")
+          const [chain] = pair.split(':');
+          return chain;
+        });
+        // 直接传递数组，不使用join
+        const chainPairsArg = tx.pure(chainsArray);
+        
+        // 传入threshold和cooldown参数
+        // 注意：合约期望threshold是整数（基点），例如0.5%应该是50
+        const thresholdArg = tx.pure(Math.round(task.threshold * 100)); // 转换为基点
+        const cooldownArg = tx.pure(task.cooldown);
+        
+        // 调用create_task函数
+        const createTaskResult = tx.moveCall({
+          target: `${packageId}::gaphunter::create_task`,
+          arguments: [
+            chainPairsArg,
+            thresholdArg,
+            cooldownArg
+          ],
+        });
+        
+        // 新增：处理返回值，将任务对象转移给用户
+        // 将返回的TaskConfig对象转移给当前用户
+        tx.moveCall({
+          target: `0x2::transfer::public_transfer`,
+          arguments: [
+            createTaskResult, // 使用create_task调用的结果
+            tx.pure(currentAccount.address) // 使用tx.pure方法正确传递地址
+          ],
+          typeArguments: [`${packageId}::task::TaskConfig`], // 指定类型参数
+        });
+        
+        try {
+          // 使用dapp-kit 0.15.2兼容的方式处理交易
+          // 创建一个简单的自定义对象
+          const txJSON = tx.serialize();
+
+          // dapp-kit 0.15.2中使用的简单字符串形式
+          signAndExecuteTransaction(
+            { transaction: txJSON as any },
+            {
+              onSuccess: (data: any) => {
+                console.log('合约调用结果:', data);
+                if (data && data.digest) {
+                  // 使用新的弹窗组件替代 alert
+                  setTransactionId(data.digest);
+                  setShowSuccessDialog(true);
+                  setSelectedComparison(null);
+                } else {
+                  console.warn('交易执行成功但未返回digest');
+                }
+                setIsLoading(false);
+              },
+              onError: (err: any) => {
+                console.error('钱包交互失败:', err);
+                setError(`钱包交互失败: ${err instanceof Error ? err.message : String(err)}`);
+                setIsLoading(false);
+              }
+            }
+          );
+        } catch (walletError) {
+          console.error('钱包交互失败:', walletError);
+          setError(`钱包交互失败: ${walletError instanceof Error ? walletError.message : String(walletError)}`);
+          setIsLoading(false);
+        }
+      } catch (contractError) {
+        console.error('调用合约失败:', contractError);
+        setError(`调用合约失败: ${contractError instanceof Error ? contractError.message : String(contractError)}`);
+        setIsLoading(false);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create task');
-    } finally {
       setIsLoading(false);
     }
   };
@@ -309,19 +397,19 @@ export default function CreateTask() {
             <div style={{ display: 'flex' }}>
               <div style={{ flexShrink: 0 }}>
                 <svg style={{ height: '20px', width: '20px', color: '#ca8a04' }} viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                </svg>
-              </div>
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            </div>
               <div style={{ marginLeft: '12px' }}>
                 <p style={{ fontSize: '14px', color: '#ca8a04' }}>
                   请连接钱包以创建监控任务
-                </p>
-              </div>
+              </p>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {error && (
+      {error && (
           <div style={{ 
             backgroundColor: 'rgba(127, 29, 29, 0.2)', 
             borderLeftWidth: '4px', 
@@ -333,17 +421,17 @@ export default function CreateTask() {
             <div style={{ display: 'flex' }}>
               <div style={{ flexShrink: 0 }}>
                 <svg style={{ height: '20px', width: '20px', color: '#dc2626' }} viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                </svg>
-              </div>
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+            </div>
               <div style={{ marginLeft: '12px' }}>
                 <p style={{ fontSize: '14px', color: '#dc2626' }}>
-                  {error}
-                </p>
-              </div>
+                {error}
+              </p>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
         {/* 价差计算表格 */}
         <div style={{ marginBottom: '24px', backgroundColor: '#1e1e1e', padding: '16px', borderRadius: '8px' }}>
@@ -504,7 +592,7 @@ export default function CreateTask() {
           />
         </div>
 
-        {isLoading && (
+      {isLoading && (
           <div style={{ marginTop: '16px', textAlign: 'center', backgroundColor: '#121212' }}>
             <div style={{ 
               display: 'inline-block', 
@@ -517,9 +605,117 @@ export default function CreateTask() {
               borderTopColor: 'transparent'
             }}></div>
             <p style={{ marginTop: '8px', fontSize: '14px', color: '#9ca3af' }}>创建任务中...</p>
-          </div>
-        )}
-      </div>
+        </div>
+      )}
+      
+      {/* 成功弹窗 */}
+      <Dialog.Root open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
+        <Dialog.Portal>
+          <Dialog.Overlay style={{
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            position: 'fixed',
+            inset: 0,
+            animation: 'overlayShow 150ms cubic-bezier(0.16, 1, 0.3, 1)'
+          }} />
+          <Dialog.Content style={{
+            backgroundColor: '#1a1a1a',
+            borderRadius: '8px',
+            boxShadow: '0 10px 25px rgba(0, 0, 0, 0.5)',
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: '90vw',
+            maxWidth: '450px',
+            maxHeight: '85vh',
+            padding: '24px',
+            animation: 'contentShow 150ms cubic-bezier(0.16, 1, 0.3, 1)',
+            border: '1px solid #333',
+            color: '#fff'
+          }}>
+            <Dialog.Title style={{ margin: 0, fontWeight: 'bold', fontSize: '18px', display: 'flex', alignItems: 'center' }}>
+              <div style={{ 
+                backgroundColor: 'rgba(34, 197, 94, 0.2)', 
+                color: '#22c55e',
+                width: '32px',
+                height: '32px',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginRight: '12px'
+              }}>
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M10 18C14.4183 18 18 14.4183 18 10C18 5.58172 14.4183 2 10 2C5.58172 2 2 5.58172 2 10C2 14.4183 5.58172 18 10 18Z" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M7 10L9 12L13 8" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
+              任务创建成功
+            </Dialog.Title>
+            <Dialog.Description style={{ marginTop: '16px', fontSize: '14px', color: '#aaa' }}>
+              您的任务已成功创建并记录在区块链上
+            </Dialog.Description>
+            
+            <div style={{ margin: '20px 0', padding: '12px', backgroundColor: 'rgba(255, 255, 255, 0.05)', borderRadius: '6px', overflow: 'hidden' }}>
+              <div style={{ fontSize: '12px', color: '#999', marginBottom: '4px' }}>交易ID:</div>
+              <div style={{ 
+                fontSize: '13px', 
+                color: '#fff', 
+                wordBreak: 'break-all',
+                fontFamily: 'monospace'
+              }}>
+                {transactionId}
+              </div>
+            </div>
+            
+            <div style={{ display: 'flex', marginTop: '24px', justifyContent: 'flex-end' }}>
+              <button 
+                onClick={() => setShowSuccessDialog(false)}
+                style={{
+                  backgroundColor: '#3b82f6',
+                  color: 'white',
+                  border: 'none',
+                  padding: '8px 16px',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s',
+                  fontWeight: 500
+                }}
+              >
+                确定
+              </button>
+            </div>
+            
+            <Dialog.Close asChild>
+              <button
+                style={{
+                  fontFamily: 'inherit',
+                  borderRadius: '100%',
+                  height: '25px',
+                  width: '25px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#aaa',
+                  position: 'absolute',
+                  top: '16px',
+                  right: '16px',
+                  cursor: 'pointer',
+                  backgroundColor: 'transparent',
+                  border: 'none'
+                }}
+                aria-label="Close"
+              >
+                <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M11.7816 4.03157C12.0062 3.80702 12.0062 3.44295 11.7816 3.2184C11.5571 2.99385 11.193 2.99385 10.9685 3.2184L7.50005 6.68682L4.03164 3.2184C3.80708 2.99385 3.44301 2.99385 3.21846 3.2184C2.99391 3.44295 2.99391 3.80702 3.21846 4.03157L6.68688 7.49999L3.21846 10.9684C2.99391 11.193 2.99391 11.557 3.21846 11.7816C3.44301 12.0061 3.80708 12.0061 4.03164 11.7816L7.50005 8.31316L10.9685 11.7816C11.193 12.0061 11.5571 12.0061 11.7816 11.7816C12.0062 11.557 12.0062 11.193 11.7816 10.9684L8.31322 7.49999L11.7816 4.03157Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd"></path>
+                </svg>
+              </button>
+            </Dialog.Close>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
+    </div>
     </Container>
   );
 } 

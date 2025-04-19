@@ -599,8 +599,8 @@ const TaskForm = forwardRef(({ onSubmit, initialValues }: TaskFormProps, ref) =>
                 )}
               </div>
             </div>
-          </div>
-          
+      </div>
+
           {/* Token选择器行 */}
           <div style={{ display: 'flex', gap: '12px', marginBottom: '12px' }}>
             {/* Token 1 自定义下拉选择器 */}
@@ -629,8 +629,8 @@ const TaskForm = forwardRef(({ onSubmit, initialValues }: TaskFormProps, ref) =>
                     )}
                   </div>
                   <span>▼</span>
-                </div>
-                
+      </div>
+
                 {dropdownState.token1 && (
                   <div style={dropdownMenuStyle}>
                     {token1Options.map(option => {
@@ -732,43 +732,43 @@ const TaskForm = forwardRef(({ onSubmit, initialValues }: TaskFormProps, ref) =>
         <div style={{ marginBottom: '16px' }}>
           <label style={labelStyle}>
             Price Difference Threshold (%)
-          </label>
-          <input
-            type="number"
-            value={threshold}
-            onChange={(e) => setThreshold(Number(e.target.value))}
-            min="0.1"
-            step="0.1"
+        </label>
+        <input
+          type="number"
+          value={threshold}
+          onChange={(e) => setThreshold(Number(e.target.value))}
+          min="0.1"
+          step="0.1"
             style={{
               ...inputStyle,
               backgroundColor: '#252525',
               color: '#FFFFFF',
               borderColor: '#333333'
             }}
-          />
-        </div>
+        />
+      </div>
 
         <div style={{ marginBottom: '16px' }}>
           <label style={labelStyle}>
             Cooldown Period (seconds)
-          </label>
-          <input
-            type="number"
-            value={cooldown}
-            onChange={(e) => setCooldown(Number(e.target.value))}
-            min="60"
-            step="60"
+        </label>
+        <input
+          type="number"
+          value={cooldown}
+          onChange={(e) => setCooldown(Number(e.target.value))}
+          min="60"
+          step="60"
             style={{
               ...inputStyle,
               backgroundColor: '#252525',
               color: '#FFFFFF',
               borderColor: '#333333'
             }}
-          />
-        </div>
+        />
+      </div>
 
-        <button
-          type="submit"
+      <button
+        type="submit"
           disabled={!currentAccount}
           style={{
             width: '100%',
@@ -782,8 +782,8 @@ const TaskForm = forwardRef(({ onSubmit, initialValues }: TaskFormProps, ref) =>
           }}
         >
           Create Task
-        </button>
-      </form>
+      </button>
+    </form>
     </div>
   );
 });
