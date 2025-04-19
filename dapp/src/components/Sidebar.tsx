@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutGrid, LineChart, History, Settings } from 'lucide-react';
+import { LayoutGrid, LineChart, History, Settings, Coins } from 'lucide-react';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -9,10 +9,11 @@ export default function Sidebar({ isOpen }: SidebarProps) {
   const location = useLocation();
 
   const navItems = [
-    { path: '/create-task', label: 'Task', icon: <LayoutGrid size={20} /> },
-    { path: '/monitor', label: 'Monitor', icon: <LineChart size={20} /> },
-    { path: '/history', label: 'History', icon: <History size={20} /> },
-    { path: '/settings', label: 'Settings', icon: <Settings size={20} /> }
+    { path: 'create-task', label: 'Task', icon: <LayoutGrid size={20} /> },
+    { path: 'monitor', label: 'Monitor', icon: <LineChart size={20} /> },
+    { path: 'history', label: 'History', icon: <History size={20} /> },
+    { path: 'liquidity', label: 'Liquidity', icon: <Coins size={20} /> },
+    { path: 'settings', label: 'Settings', icon: <Settings size={20} /> }
   ];
 
   return (
@@ -26,7 +27,7 @@ export default function Sidebar({ isOpen }: SidebarProps) {
         margin: 0 
       }}>
         {navItems.map((item) => {
-          const isActive = location.pathname === item.path;
+          const isActive = location.pathname === `/${item.path}`;
           
           return (
             <li key={item.path}>

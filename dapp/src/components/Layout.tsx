@@ -3,9 +3,10 @@ import { Container, Heading } from "@radix-ui/themes";
 import { useState, useEffect, useRef } from "react";
 import Sidebar from "./Sidebar";
 import { Menu } from 'lucide-react';
+import { Outlet } from 'react-router-dom';
 
 interface LayoutProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
 }
 
 // 全局样式对象
@@ -177,7 +178,7 @@ export default function Layout({ children }: LayoutProps) {
             backgroundColor: '#121212' // 确保主内容区背景色一致
           }}>
             <Container style={{ backgroundColor: '#121212' }} className="content-container">
-              {children}
+              {children || <Outlet />}
             </Container>
           </main>
         </div>

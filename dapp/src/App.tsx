@@ -5,41 +5,68 @@ import Layout from "./components/Layout";
 import CreateTask from "./pages/CreateTask";
 import PriceMonitor from "./pages/PriceMonitor";
 import History from "./pages/History";
+import Liquidity from "./pages/Liquidity";
 
 function App() {
-  const currentAccount = useCurrentAccount();
-
   return (
     <Router>
       <Routes>
-        <Route path="*" element={
-          <Layout>
-            {currentAccount ? (
-              <Routes>
-                <Route path="/create-task" element={<CreateTask />} />
-                <Route path="/monitor" element={<PriceMonitor />} />
-                <Route path="/history" element={<History />} />
-                <Route path="/settings" element={
-                  <Container>
-                    <Heading size="6">Settings</Heading>
-                    <p className="mt-4 text-gray-600">Coming Soon</p>
-                  </Container>
-                } />
-                <Route path="/" element={<Navigate to="/create-task" replace />} />
-              </Routes>
-            ) : (
+        <Route path="/" element={<Layout />}>
+          <Route index element={
+            <RequireWallet>
+              <Navigate to="/create-task" replace />
+            </RequireWallet>
+          } />
+          <Route path="create-task" element={
+            <RequireWallet>
+              <CreateTask />
+            </RequireWallet>
+          } />
+          <Route path="monitor" element={
+            <RequireWallet>
+              <PriceMonitor />
+            </RequireWallet>
+          } />
+          <Route path="history" element={
+            <RequireWallet>
+              <History />
+            </RequireWallet>
+          } />
+          <Route path="liquidity" element={
+            <RequireWallet>
+              <Liquidity />
+            </RequireWallet>
+          } />
+          <Route path="settings" element={
+            <RequireWallet>
               <Container>
-                <div className="text-center py-10">
-                  <Heading size="6" className="mb-4">Welcome to GapHunter</Heading>
-                  <p className="text-gray-600">Please connect your wallet to continue</p>
-                </div>
+                <Heading size="6">Settings</Heading>
+                <p className="mt-4 text-gray-600">Coming Soon</p>
               </Container>
-            )}
-          </Layout>
-        } />
+            </RequireWallet>
+          } />
+        </Route>
       </Routes>
     </Router>
   );
+}
+
+// 钱包连接检查组件
+function RequireWallet({ children }: { children: React.ReactNode }) {
+  const currentAccount = useCurrentAccount();
+  
+  if (!currentAccount) {
+    return (
+      <Container>
+        <div className="text-center py-10">
+          <Heading size="6" className="mb-4">Welcome to GapHunter</Heading>
+          <p className="text-gray-600">Please connect your wallet to continue</p>
+        </div>
+      </Container>
+    );
+  }
+
+  return <>{children}</>;
 }
 
 export default App;
