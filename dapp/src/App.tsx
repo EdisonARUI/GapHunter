@@ -5,7 +5,7 @@ import Layout from "./components/Layout";
 import CreateTask from "./pages/CreateTask";
 import PriceMonitor from "./pages/PriceMonitor";
 import History from "./pages/History";
-import Liquidity from "./pages/Liquidity";
+import { Liquidity } from "./pages/Liquidity";
 
 function App() {
   return (
