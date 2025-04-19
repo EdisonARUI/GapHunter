@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useCurrentAccount, useSignAndExecuteTransaction } from "@mysten/dapp-kit";
 import { useSuiClient } from "@mysten/dapp-kit";
-import { Text, Button, Card, Flex, Heading, Separator, Box } from "@radix-ui/themes";
+import { Text, Button, Card, Flex, Heading, Separator, Box, TextField, Badge } from "@radix-ui/themes";
 import { TransactionBlock } from "@mysten/sui.js/transactions";
 import { TransactionDialog } from "../components/TransactionDialog";
 import { 
@@ -14,37 +14,174 @@ import {
   StakeInfo, 
   DECIMAL_MULTIPLIER
 } from "../utils/liquidity";
+import { ReloadIcon, ArrowRightIcon, PlusIcon, MinusIcon } from "@radix-ui/react-icons";
 
-// 模拟TextField组件，替代@radix-ui/themes中不存在的TextField.Input
-const TextField = {
-  Root: ({ children }: { children: React.ReactNode }) => (
-    <div style={{ position: 'relative', width: '100%' }}>{children}</div>
-  ),
-  Input: ({ 
-    placeholder, 
-    value, 
-    onChange 
-  }: { 
-    placeholder?: string; 
-    value: string; 
-    onChange: (e: React.ChangeEvent<HTMLInputElement>) => void 
-  }) => (
-    <input
-      type="text"
-      placeholder={placeholder}
-      value={value}
-      onChange={onChange}
-      style={{
-        width: '100%',
-        padding: '8px 12px',
-        borderRadius: '4px',
-        border: '1px solid #333',
-        backgroundColor: '#222',
-        color: 'white',
-        fontSize: '14px'
-      }}
-    />
-  )
+// 设计系统常量
+const COLORS = {
+  background: "#121212",
+  cardBg: "#1A1A1A",
+  cardBgAlt: "#262626",
+  accentBlue: "#3B82F6",
+  error: "#DC2626",
+  warning: "#CA8A04",
+  success: "#22C55E",
+  text: {
+    primary: "#FFFFFF",
+    secondary: "#E2E8F0",
+    tertiary: "#94A3B8",
+    muted: "#CBD5E1"
+  },
+  border: "#333333"
+};
+
+// 设计系统间距
+const SPACING = {
+  xs: "4px",
+  sm: "8px",
+  md: "16px",
+  lg: "24px",
+  xl: "32px"
+};
+
+// 设计系统布局样式
+const styles = {
+  container: {
+    backgroundColor: COLORS.background,
+    minHeight: "calc(100vh - 60px)",
+    padding: SPACING.lg,
+    display: "flex",
+    flexDirection: "column" as const,
+    alignItems: "center"
+  },
+  mainCard: {
+    backgroundColor: COLORS.cardBg,
+    maxWidth: "800px",
+    width: "100%",
+    borderRadius: "8px",
+    boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+    padding: SPACING.lg
+  },
+  sectionCard: {
+    backgroundColor: COLORS.cardBgAlt,
+    padding: SPACING.md,
+    borderRadius: "6px",
+    marginBottom: SPACING.md
+  },
+  formGroup: {
+    display: "flex",
+    gap: SPACING.md,
+    alignItems: "center",
+    marginBottom: SPACING.md
+  },
+  input: {
+    backgroundColor: "#2D2D2D",
+    border: `1px solid ${COLORS.border}`,
+    color: COLORS.text.primary,
+    borderRadius: "4px",
+    padding: `${SPACING.sm} ${SPACING.md}`,
+    width: "100%"
+  },
+  actionButton: {
+    backgroundColor: COLORS.accentBlue,
+    color: COLORS.text.primary,
+    border: "none",
+    borderRadius: "6px",
+    padding: `${SPACING.sm} ${SPACING.md}`,
+    cursor: "pointer",
+    transition: "background-color 0.2s",
+    whiteSpace: "nowrap",
+    display: "flex",
+    alignItems: "center",
+    gap: SPACING.xs,
+    fontSize: "14px",
+    fontWeight: 500
+  },
+  button: {
+    minWidth: "120px",
+    height: "36px",
+    padding: `${SPACING.xs} ${SPACING.md}`,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: SPACING.xs
+  },
+  sectionHeading: {
+    color: COLORS.text.secondary,
+    marginBottom: SPACING.md,
+    fontSize: "18px",
+    fontWeight: 500
+  },
+  pageHeading: {
+    color: COLORS.text.primary,
+    marginBottom: SPACING.lg,
+    fontSize: "24px",
+    fontWeight: 700
+  },
+  labelText: {
+    color: COLORS.text.secondary,
+    fontWeight: 500,
+    fontSize: "14px",
+    marginBottom: SPACING.xs
+  },
+  valueText: {
+    color: COLORS.text.primary,
+    fontSize: "16px"
+  },
+  infoGroup: {
+    display: "flex",
+    flexDirection: "column" as const,
+    gap: SPACING.xs
+  },
+  spinner: {
+    display: "inline-block",
+    width: "16px",
+    height: "16px",
+    border: `2px solid rgba(255, 255, 255, 0.2)`,
+    borderRadius: "50%",
+    borderTop: `2px solid ${COLORS.text.primary}`,
+    animation: "spin 1s linear infinite"
+  },
+  walletIndicator: {
+    width: "12px",
+    height: "12px",
+    borderRadius: "50%",
+    marginRight: SPACING.sm
+  },
+  divider: {
+    height: "1px",
+    backgroundColor: COLORS.border,
+    width: "100%",
+    margin: `${SPACING.md} 0`
+  },
+  errorText: {
+    color: COLORS.error,
+    marginTop: SPACING.md,
+    fontSize: "14px",
+    padding: SPACING.sm,
+    backgroundColor: "rgba(220, 38, 38, 0.1)",
+    borderRadius: "4px",
+    borderLeft: `4px solid ${COLORS.error}`
+  },
+  infoCard: {
+    backgroundColor: "#262626",
+    borderRadius: "6px",
+    padding: SPACING.md,
+    marginBottom: SPACING.md
+  },
+  amountDisplay: {
+    fontFamily: "monospace",
+    fontSize: "16px",
+    fontWeight: 500,
+    color: COLORS.text.primary
+  },
+  statusBadge: {
+    padding: `${SPACING.xs} ${SPACING.sm}`,
+    borderRadius: "4px",
+    fontSize: "12px",
+    fontWeight: 500,
+    display: "inline-flex",
+    alignItems: "center"
+  }
 };
 
 export function Liquidity() {
@@ -77,12 +214,8 @@ export function Liquidity() {
   // 获取钱包余额和质押信息的回调函数
   const fetchData = async () => {
     if (!currentAccount || !suiClient) {
-      console.error("钱包未连接或Sui客户端未初始化");
       return;
     }
-
-    console.log("当前钱包地址:", currentAccount.address);
-    console.log("Sui客户端:", suiClient);
 
     try {
       // 获取钱包余额
@@ -113,18 +246,15 @@ export function Liquidity() {
         currentAccount.address
       );
     } catch (err: any) {
-      console.error("获取数据失败:", err);
-      setError(`获取数据失败: ${err.message || JSON.stringify(err)}`);
+      setError(`Failed to fetch data: ${err.message || JSON.stringify(err)}`);
     }
   };
 
   // 当钱包连接或改变时获取数据
   useEffect(() => {
     if (currentAccount) {
-      console.log("钱包已连接:", currentAccount);
       fetchData();
     } else {
-      console.log("钱包未连接");
       // 清除数据
       setWalletBalance(null);
       setStakeInfo(null);
@@ -134,13 +264,13 @@ export function Liquidity() {
   // 处理Mint操作
   const handleMint = async () => {
     if (!currentAccount || !suiClient) {
-      setError("请先连接钱包");
+      setError("Please connect wallet first");
       return;
     }
 
     const mintAmountValue = parseFloat(mintAmount);
     if (isNaN(mintAmountValue) || mintAmountValue <= 0) {
-      setError("请输入有效的铸造数量");
+      setError("Please enter a valid mint amount");
       return;
     }
 
@@ -155,11 +285,9 @@ export function Liquidity() {
       setTransactionId,
       setShowSuccessDialog,
       onSuccess: () => {
-        console.log("铸造操作成功，开始刷新数据...");
         // 延迟执行fetchData以确保区块链状态更新
         setTimeout(() => {
           fetchData();
-          console.log("数据刷新完成");
         }, 2000);
       }
     };
@@ -178,13 +306,13 @@ export function Liquidity() {
   // 处理质押操作
   const handleStake = async () => {
     if (!currentAccount || !suiClient) {
-      setError("请先连接钱包");
+      setError("Please connect wallet first");
       return;
     }
 
     const stakeAmountValue = parseFloat(stakeAmount);
     if (isNaN(stakeAmountValue) || stakeAmountValue <= 0) {
-      setError("请输入有效的质押数量");
+      setError("Please enter a valid stake amount");
       return;
     }
 
@@ -199,15 +327,12 @@ export function Liquidity() {
       setTransactionId,
       setShowSuccessDialog,
       onSuccess: () => {
-        console.log("质押操作成功，开始刷新数据...");
         // 延迟执行fetchData以确保区块链状态更新
         setTimeout(async () => {
           await fetchData();
-          console.log("数据刷新完成，再次检查交易...");
           // 再次延迟检查，确保区块链状态已更新
           setTimeout(async () => {
             if (!stakeInfo && currentAccount && suiClient) {
-              console.log("仍未发现质押信息，尝试再次检查...");
               await fetchStakeInfo(
                 suiClient as any, 
                 currentAccount.address, 
@@ -239,13 +364,13 @@ export function Liquidity() {
   // 处理解质押操作
   const handleUnstake = async () => {
     if (!currentAccount || !suiClient) {
-      setError("请先连接钱包");
+      setError("Please connect wallet first");
       return;
     }
 
     const unstakeAmountValue = parseFloat(unstakeAmount);
     if (isNaN(unstakeAmountValue) || unstakeAmountValue <= 0) {
-      setError("请输入有效的解质押数量");
+      setError("Please enter a valid unstake amount");
       return;
     }
 
@@ -254,7 +379,6 @@ export function Liquidity() {
 
     // 如果没有质押信息，提示用户但继续尝试
     if (!stakeInfo) {
-      console.log("未检测到质押信息，将尝试执行解质押操作");
       // 创建一个临时的stakeInfo对象
       const tempStakeInfo: StakeInfo = {
         amount: actualUnstakeAmount,  // 设置为要解质押的金额
@@ -263,7 +387,7 @@ export function Liquidity() {
       };
       
       // 提示用户我们没有质押信息
-      setError("未检测到质押信息，但将尝试执行解质押操作。如失败请刷新质押数据后重试。");
+      setError("No stake information detected, but will attempt to unstake. If it fails, please refresh stake data and try again.");
       
       // 准备回调函数
       const callbacks = {
@@ -273,11 +397,9 @@ export function Liquidity() {
         setTransactionId,
         setShowSuccessDialog,
         onSuccess: () => {
-          console.log("解质押操作成功，开始刷新数据...");
           // 延迟执行fetchData以确保区块链状态更新
           setTimeout(() => {
             fetchData();
-            console.log("数据刷新完成");
           }, 2000);
         }
       };
@@ -291,7 +413,7 @@ export function Liquidity() {
             setIsLoading: setIsStakeLoading,
             setStakeInfo,
             setError: (err) => {
-              if (err) console.error("获取质押信息失败:", err);
+              if (err) console.error("Failed to get stake info:", err);
             }
           }
         );
@@ -310,8 +432,7 @@ export function Liquidity() {
           callbacks
         );
       } catch (error) {
-        console.error("解质押预处理失败:", error);
-        setError(`解质押预处理失败: ${error instanceof Error ? error.message : String(error)}`);
+        setError(`Unstake preprocessing failed: ${error instanceof Error ? error.message : String(error)}`);
         setIsLoading(false);
       }
       return;
@@ -325,11 +446,9 @@ export function Liquidity() {
       setTransactionId,
       setShowSuccessDialog,
       onSuccess: () => {
-        console.log("解质押操作成功，开始刷新数据...");
         // 延迟执行fetchData以确保区块链状态更新
         setTimeout(() => {
           fetchData();
-          console.log("数据刷新完成");
         }, 2000);
       }
     };
@@ -346,189 +465,269 @@ export function Liquidity() {
     );
   };
 
-  // 获取显示余额
-  const getDisplayBalance = () => {
-    if (!currentAccount) {
-      return <Text color="yellow">请先连接钱包</Text>;
-    }
-    
-    if (isBalanceLoading) {
-      return <div className="spinner-small" />;
-    }
-    if (balanceError) {
-      return <Text color="red">{balanceError}</Text>;
-    }
-    if (walletBalance === null) {
-      return "未知";
-    }
-    return `${(walletBalance / DECIMAL_MULTIPLIER).toFixed(2)} gUSDT`;
+  // 渲染钱包状态
+  const renderWalletStatus = () => {
+    return (
+      <Flex 
+        justify="between" 
+        align="center" 
+        style={{ 
+          backgroundColor: COLORS.cardBgAlt, 
+          padding: SPACING.md, 
+          borderRadius: "6px", 
+          marginBottom: SPACING.md 
+        }}
+      >
+        <Flex align="center" gap="2">
+          <div 
+            style={{ 
+              ...styles.walletIndicator, 
+              backgroundColor: currentAccount ? COLORS.success : COLORS.error 
+            }} 
+          />
+          <Text size="2" style={{ color: COLORS.text.secondary }}>
+            {currentAccount 
+              ? `Connected: ${currentAccount.address.slice(0, 6)}...${currentAccount.address.slice(-4)}` 
+              : "Wallet Not Connected"}
+          </Text>
+        </Flex>
+        
+        <Button 
+          size="2" 
+          color="blue"
+          onClick={fetchData} 
+          disabled={!currentAccount || isLoading}
+          style={styles.button}
+        >
+          <ReloadIcon />
+          Refresh Data
+        </Button>
+      </Flex>
+    );
   };
 
-  // 获取显示质押信息
-  const getDisplayStakeInfo = () => {
-    if (isStakeLoading) {
-      return <div className="spinner-small" />;
-    }
-    if (error) {
-      return <Text color="red">{error}</Text>;
-    }
-    if (!stakeInfo) {
-      return "未质押";
-    }
+  // 渲染账户信息
+  const renderAccountInfo = () => {
+    // 钱包余额显示
+    const renderBalance = () => {
+      if (!currentAccount) {
+        return <Badge color="yellow">Please connect wallet</Badge>;
+      }
+      
+      if (isBalanceLoading) {
+        return <span style={{ display: "inline-block", width: "16px", height: "16px" }} className="spinner" />;
+      }
+      
+      if (balanceError) {
+        return <Badge color="red">{balanceError}</Badge>;
+      }
+      
+      if (walletBalance === null) {
+        return <Badge color="gray">Unknown</Badge>;
+      }
+      
+      return (
+        <Text style={styles.amountDisplay}>
+          {(walletBalance / DECIMAL_MULTIPLIER).toFixed(2)} gUSDT
+        </Text>
+      );
+    };
 
-    const stakedAmount = stakeInfo.amount / DECIMAL_MULTIPLIER;
-    const rewardAmount = stakeInfo.reward / DECIMAL_MULTIPLIER;
-    const totalAmount = (stakeInfo.amount + stakeInfo.reward) / DECIMAL_MULTIPLIER;
+    // 质押信息显示
+    const renderStakeInfo = () => {
+      if (isStakeLoading) {
+        return <span style={{ display: "inline-block", width: "16px", height: "16px" }} className="spinner" />;
+      }
+      
+      if (error && error.includes("stake info")) {
+        return <Badge color="red">Failed to fetch</Badge>;
+      }
+      
+      if (!stakeInfo) {
+        return <Badge color="gray">No Stake</Badge>;
+      }
+
+      const stakedAmount = stakeInfo.amount / DECIMAL_MULTIPLIER;
+      const rewardAmount = stakeInfo.reward / DECIMAL_MULTIPLIER;
+      const totalAmount = (stakeInfo.amount + stakeInfo.reward) / DECIMAL_MULTIPLIER;
+
+      return (
+        <Flex direction="column" gap="1">
+          <Text style={styles.amountDisplay}>
+            {totalAmount.toFixed(2)} gUSDT
+          </Text>
+          <Flex direction="column" gap="1">
+            <Text size="1" style={{ color: COLORS.text.tertiary }}>
+              Principal: {stakedAmount.toFixed(2)} gUSDT
+            </Text>
+            <Text size="1" style={{ color: COLORS.text.tertiary }}>
+              Reward: {rewardAmount.toFixed(2)} gUSDT
+            </Text>
+          </Flex>
+        </Flex>
+      );
+    };
 
     return (
-      <>
-        <Text>质押: {stakedAmount.toFixed(2)} gUSDT</Text>
-        <Text>奖励: {rewardAmount.toFixed(2)} gUSDT</Text>
-        <Text>总计: {totalAmount.toFixed(2)} gUSDT</Text>
-        {/* 调试信息 */}
-        {stakeInfo && (
-          <Text size="1" style={{ color: '#888' }}>
-            对象ID: {stakeInfo.object_id.slice(0, 8)}...
+      <Card style={styles.sectionCard}>
+        <Heading size="3" style={{ marginBottom: SPACING.md, color: COLORS.text.secondary }}>
+          Account Info
+        </Heading>
+        <Flex justify="between" wrap="wrap" gap="4">
+          <Box style={styles.infoGroup}>
+            <Text size="2" style={{ color: COLORS.text.tertiary, marginBottom: SPACING.xs }}>
+              Wallet Balance
+            </Text>
+            {renderBalance()}
+          </Box>
+          
+          <Box style={styles.infoGroup}>
+            <Text size="2" style={{ color: COLORS.text.tertiary, marginBottom: SPACING.xs }}>
+              Total Staked
+            </Text>
+            {renderStakeInfo()}
+          </Box>
+        </Flex>
+      </Card>
+    );
+  };
+
+  // 渲染铸造部分
+  const renderMintSection = () => {
+    return (
+      <Card style={styles.sectionCard}>
+        <Heading size="3" style={{ marginBottom: SPACING.md, color: COLORS.text.secondary }}>
+          Mint gUSDT
+        </Heading>
+        <Flex align="end" gap="3">
+          <Box style={{ flex: 1 }}>
+            <Text size="2" style={{ color: COLORS.text.tertiary, marginBottom: SPACING.xs }}>
+              Mint Amount
+            </Text>
+            <input
+              type="text"
+              style={styles.input}
+              placeholder="Enter amount"
+              value={mintAmount}
+              onChange={(e) => setMintAmount(e.target.value)}
+            />
+          </Box>
+          <Button 
+            size="2"
+            color="blue"
+            onClick={handleMint} 
+            disabled={!currentAccount || isLoading}
+            style={styles.button}
+          >
+            <PlusIcon />
+            Mint
+          </Button>
+        </Flex>
+      </Card>
+    );
+  };
+
+  // 渲染质押部分
+  const renderStakeSection = () => {
+    return (
+      <Card style={styles.sectionCard}>
+        <Heading size="3" style={{ marginBottom: SPACING.md, color: COLORS.text.secondary }}>
+          Stake gUSDT
+        </Heading>
+        <Flex align="end" gap="3">
+          <Box style={{ flex: 1 }}>
+            <Text size="2" style={{ color: COLORS.text.tertiary, marginBottom: SPACING.xs }}>
+              Stake Amount
+            </Text>
+            <input
+              type="text"
+              style={styles.input}
+              placeholder="Enter amount"
+              value={stakeAmount}
+              onChange={(e) => setStakeAmount(e.target.value)}
+            />
+          </Box>
+          <Button 
+            size="2"
+            color="blue"
+            onClick={handleStake} 
+            disabled={!currentAccount || isLoading}
+            style={styles.button}
+          >
+            <ArrowRightIcon />
+            Stake
+          </Button>
+        </Flex>
+      </Card>
+    );
+  };
+
+  // 渲染解质押部分
+  const renderUnstakeSection = () => {
+    return (
+      <Card style={styles.sectionCard}>
+        <Heading size="3" style={{ marginBottom: SPACING.md, color: COLORS.text.secondary }}>
+          Unstake gUSDT
+        </Heading>
+        <Flex align="end" gap="3">
+          <Box style={{ flex: 1 }}>
+            <Text size="2" style={{ color: COLORS.text.tertiary, marginBottom: SPACING.xs }}>
+              Unstake Amount
+            </Text>
+            <input
+              type="text"
+              style={styles.input}
+              placeholder="Enter amount"
+              value={unstakeAmount}
+              onChange={(e) => setUnstakeAmount(e.target.value)}
+            />
+          </Box>
+          <Button 
+            size="2"
+            color="blue"
+            onClick={handleUnstake} 
+            disabled={!currentAccount || isLoading}
+            style={styles.button}
+          >
+            <MinusIcon />
+            Unstake
+          </Button>
+        </Flex>
+        
+        {!stakeInfo && currentAccount && (
+          <Text size="1" style={{ color: COLORS.warning, marginTop: SPACING.sm }}>
+            No stake detected, but you can still attempt to unstake
           </Text>
         )}
-        {isStakeLoading && <Text size="1" style={{ color: '#888' }}>正在加载质押数据...</Text>}
-      </>
+      </Card>
     );
   };
 
   return (
-    <div className="container">
-      <main className="main">
-        <Card className="mainCard">
-          <Flex direction="column" gap="4">
-            <Heading size="6">gUSDT流动性</Heading>
-
-            {/* 钱包状态显示 */}
-            <Card className="statusCard">
-              <Flex gap="2" align="center">
-                <div className={`wallet-indicator ${currentAccount ? 'connected' : 'disconnected'}`} />
-                <Text>
-                  {currentAccount 
-                    ? `已连接钱包: ${currentAccount.address.slice(0, 6)}...${currentAccount.address.slice(-4)}` 
-                    : "未连接钱包"}
-                </Text>
-              </Flex>
-            </Card>
-
-            {/* 钱包余额和质押信息显示区域 */}
-            <Card className="infoCard">
-              <Flex direction="column" gap="2">
-                <Heading size="4">账户信息</Heading>
-                <Flex gap="4" justify="between">
-                  <Box>
-                    <Text weight="bold">钱包余额:</Text>
-                    <Text>{getDisplayBalance()}</Text>
-                  </Box>
-                  <Box>
-                    <Text weight="bold">质押信息:</Text>
-                    {getDisplayStakeInfo()}
-                    {/* 调试信息 */}
-                    {stakeInfo && (
-                      <Text size="1" style={{ color: '#888' }}>
-                        对象ID: {stakeInfo.object_id.slice(0, 8)}...
-                      </Text>
-                    )}
-                    {isStakeLoading && <Text size="1" style={{ color: '#888' }}>正在加载质押数据...</Text>}
-                  </Box>
-                  <Flex direction="column" gap="2">
-                    <Button onClick={fetchData} disabled={!currentAccount || isLoading}>
-                      {isLoading ? <div className="spinner-small" /> : "刷新数据"}
-                    </Button>
-                    <Button 
-                      onClick={async () => {
-                        if (currentAccount && suiClient) {
-                          setIsStakeLoading(true);
-                          console.log("强制重新查询质押信息...");
-                          await fetchStakeInfo(
-                            suiClient as any, 
-                            currentAccount.address, 
-                            {
-                              setIsLoading: setIsStakeLoading,
-                              setStakeInfo,
-                              setError
-                            }
-                          );
-                        }
-                      }} 
-                      disabled={!currentAccount || isStakeLoading}
-                      size="1"
-                      color="amber"
-                    >
-                      强制刷新质押
-                    </Button>
-                  </Flex>
-                </Flex>
-              </Flex>
-            </Card>
-
-            <Separator size="4" />
-
-            <Flex direction="column" gap="3">
-              <Heading size="4">铸造gUSDT</Heading>
-              <Flex gap="3" align="center">
-                <TextField.Root>
-                  <TextField.Input
-                    placeholder="输入铸造数量"
-                    value={mintAmount}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setMintAmount(e.target.value)}
-                  />
-                </TextField.Root>
-                <Button onClick={handleMint} disabled={!currentAccount || isLoading}>
-                  {isLoading ? <div className="spinner-small" /> : "铸造gUSDT"}
-                </Button>
-              </Flex>
-            </Flex>
-
-            <Separator size="4" />
-
-            <Flex direction="column" gap="3">
-              <Heading size="4">质押gUSDT</Heading>
-              <Flex gap="3" align="center">
-                <TextField.Root>
-                  <TextField.Input
-                    placeholder="输入质押数量"
-                    value={stakeAmount}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setStakeAmount(e.target.value)}
-                  />
-                </TextField.Root>
-                <Button onClick={handleStake} disabled={!currentAccount || isLoading}>
-                  {isLoading ? <div className="spinner-small" /> : "质押gUSDT"}
-                </Button>
-              </Flex>
-            </Flex>
-
-            <Separator size="4" />
-
-            <Flex direction="column" gap="3">
-              <Heading size="4">解质押gUSDT</Heading>
-              <Flex gap="3" align="center">
-                <TextField.Root>
-                  <TextField.Input
-                    placeholder="输入解质押数量"
-                    value={unstakeAmount}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setUnstakeAmount(e.target.value)}
-                  />
-                </TextField.Root>
-                <Button onClick={handleUnstake} disabled={!currentAccount || isLoading}>
-                  {isLoading ? <div className="spinner-small" /> : "解质押gUSDT"}
-                </Button>
-              </Flex>
-              {!stakeInfo && currentAccount && (
-                <Text size="1" style={{ color: 'orange' }}>
-                  未检测到质押信息，但您仍可尝试解质押操作
-                </Text>
-              )}
-            </Flex>
-
-            {error && <Text color="red">{error}</Text>}
-          </Flex>
-        </Card>
-      </main>
+    <div style={styles.container}>
+      <div style={styles.mainCard}>
+        <Heading size="5" style={styles.pageHeading}>
+          Liquidity Management
+        </Heading>
+        
+        {/* 钱包状态显示 */}
+        {renderWalletStatus()}
+        
+        {/* 账户信息显示 */}
+        {renderAccountInfo()}
+        
+        {/* 操作部分 */}
+        {renderMintSection()}
+        {renderStakeSection()}
+        {renderUnstakeSection()}
+        
+        {/* 错误提示 */}
+        {error && !error.includes("stake info") && (
+          <div style={styles.errorText}>
+            {error}
+          </div>
+        )}
+      </div>
       
       {/* 交易成功对话框 */}
       <TransactionDialog
@@ -537,60 +736,23 @@ export function Liquidity() {
         transactionId={transactionId}
         operation={successOperation}
       />
-
-      <style>{`
-        .container {
-          min-height: 100vh;
-          padding: 0 0.5rem;
-          display: flex;
-          flex-direction: column;
-          justify-content: center;
-          align-items: center;
-        }
-        .main {
-          padding: 2rem 0;
-          flex: 1;
-          display: flex;
-          flex-direction: column;
-          justify-content: flex-start;
-          align-items: center;
-          width: 100%;
-        }
-        .mainCard {
-          width: 100%;
-          max-width: 800px;
-          padding: 1.5rem;
-        }
-        .infoCard, .statusCard {
-          padding: 1rem;
-          background-color: var(--accent-2);
-          margin-bottom: 1rem;
-        }
-        .wallet-indicator {
-          width: 12px;
-          height: 12px;
-          border-radius: 50%;
-        }
-        .connected {
-          background-color: #10b981;
-        }
-        .disconnected {
-          background-color: #ef4444;
-        }
-        .spinner-small {
-          display: inline-block;
-          width: 16px;
-          height: 16px;
-          border: 2px solid rgba(59, 130, 246, 0.3);
-          border-radius: 50%;
-          border-top-color: #3B82F6;
-          animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-      `}</style>
+      
+      {/* 全局样式 */}
+      <style>
+        {`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+          
+          .spinner {
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            border-top: 2px solid #3B82F6;
+            animation: spin 1s linear infinite;
+          }
+        `}
+      </style>
     </div>
   );
 }
