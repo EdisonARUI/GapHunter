@@ -109,7 +109,7 @@ const PriceMonitor: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedTokens, setSelectedTokens] = useState<string[]>(['ETH-USDT']);
-  const [selectedChains, setSelectedChains] = useState<string[]>(['ethereum', 'arbitrum', 'optimism', 'base', 'bsc', 'solana', 'sui']);
+  const [selectedChains, setSelectedChains] = useState<string[]>(['ethereum', 'arbitrum', 'optimism', 'base']);
   const [supportedPairs, setSupportedPairs] = useState<{chains: string[], tokens: string[]}>({
     chains: [], tokens: []
   });
@@ -163,10 +163,17 @@ const PriceMonitor: React.FC = () => {
       return;
     }
     
-    if (selectedChains.length === 0 || selectedTokens.length === 0) {
-      console.warn('⚠️ 未选择任何链或代币，无法获取数据');
+    if (selectedChains.length === 0) {
+      console.warn('⚠️ 未选择任何链，无法获取数据');
       setIsLoading(false);
-      setError('请选择至少一个链和一个代币');
+      setError('请选择至少一个链');
+      return;
+    }
+    
+    if (selectedTokens.length === 0) {
+      console.warn('⚠️ 未选择任何代币，无法获取数据');
+      setIsLoading(false);
+      setError('请选择至少一个代币');
       return;
     }
     
@@ -174,11 +181,11 @@ const PriceMonitor: React.FC = () => {
     setError('');
     
     try {
-      // 1. 获取所有选中链和代币对的价格数据
+      // 1. 获取所有选中链的价格数据
       console.log('🔍 获取价格数据...');
-      // 为每个链单独获取数据，防止一个链的失败影响其他链
       const allPrices: PriceData[] = [];
       const failedChains: string[] = [];
+      const unsupportedTokens: string[] = [];
       
       for (const token of selectedTokens) {
         for (const chain of selectedChains) {
@@ -205,10 +212,14 @@ const PriceMonitor: React.FC = () => {
         console.warn('⚠️ 未获取到任何实际价格数据，生成模拟数据');
         const now = Date.now();
         
-        // 为每个选中的链和代币生成模拟数据
+        // 为所有选择的代币和链生成模拟数据
         for (const chain of selectedChains) {
           for (const token of selectedTokens) {
-            const basePrice = 1500 + Math.random() * 1000;
+            // 根据代币类型设置不同的基础价格
+            const basePrice = token === 'ETH-USDT' 
+              ? 1500 + Math.random() * 1000  // ETH价格范围
+              : 1 + Math.random() * 0.1;     // USDC价格（约等于1美元）
+              
             mockData.push({
               chain,
               token,
@@ -225,18 +236,24 @@ const PriceMonitor: React.FC = () => {
       console.log('🔍 计算价格比较数据...');
       // 使用获取到的价格或模拟数据
       const prices = allPrices.length > 0 ? allPrices : mockData;
+      
+      // 过滤确保只有有效数据 - 允许ETH-USDT和ETH-USDC
+      const validPrices = prices.filter(price => 
+        price.token === 'ETH-USDT' || price.token === 'ETH-USDC'
+      );
+      
       setError(null);
       
       // 使用数据提供器生成价格比较数据
-      const comparisons = priceDataProvider.generateComparisonData(prices);
+      const comparisons = priceDataProvider.generateComparisonData(validPrices);
       setComparisonData(comparisons);
       
       // 3. 准备表格数据
       console.log('🔍 准备表格数据...');
-      const tableRows = await priceDataProvider.prepareTableData(prices, comparisons);
+      const tableRows = await priceDataProvider.prepareTableData(validPrices, comparisons);
       
       // 更新状态
-      setPriceData(prices);
+      setPriceData(validPrices);
       setTableData(tableRows);
       setLastUpdated(new Date());
       setIsLoading(false);
@@ -280,7 +297,7 @@ const PriceMonitor: React.FC = () => {
     return () => clearTimeout(initialTimeout);
   }, []);
   
-  // 初始化数据和定时更新
+  // 修改初始化数据和定时更新的useEffect
   useEffect(() => {
     console.log('🔍 数据加载触发条件检查 - 选中的链:', selectedChains.length, '选中的代币:', selectedTokens.length);
     
@@ -292,7 +309,7 @@ const PriceMonitor: React.FC = () => {
       
       return () => clearInterval(interval);
     } else {
-      // 如果没有选择链或代币，显示错误信息而不是无限加载
+      // 如果没有选择链或代币，显示错误信息
       console.warn('⚠️ 没有选中任何链或代币，无法获取价格数据');
       setIsLoading(false);
       setError('请选择至少一个链和一个代币');
@@ -326,10 +343,12 @@ const PriceMonitor: React.FC = () => {
     });
   };
   
-  // 处理币对选择变更
+  // 处理代币选择变更
   const handleTokenToggle = (token: string) => {
     setSelectedTokens(prev => {
       if (prev.includes(token)) {
+        // 禁止取消选择所有代币，至少保留一个
+        if (prev.length === 1) return prev;
         return prev.filter(t => t !== token);
       } else {
         return [...prev, token];
@@ -407,9 +426,10 @@ const PriceMonitor: React.FC = () => {
     }
   };
 
-  // 代币对选项
+  // 代币对选项 - 增加ETH-USDC，不禁用
   const tokenPairOptions = [
-    { value: 'ETH-USDT', label: 'ETH/USDT', icon: ethTokenIcon }
+    { value: 'ETH-USDT', label: 'ETH/USDT', icon: ethTokenIcon },
+    { value: 'ETH-USDC', label: 'ETH/USDC', icon: ethTokenIcon }
   ];
 
   // 链选项
@@ -483,7 +503,6 @@ const PriceMonitor: React.FC = () => {
           <div>选中链: {selectedChains.join(', ')}</div>
           <div>选中代币: {selectedTokens.join(', ')}</div>
           <div>支持的链: {supportedPairs.chains.join(', ')}</div>
-          <div>支持的代币: {supportedPairs.tokens.join(', ')}</div>
           <div>价格数据条数: {priceData.length}</div>
           <div>比较数据条数: {comparisonData.length}</div>
           <div>表格数据条数: {tableData.length}</div>
@@ -542,7 +561,7 @@ const PriceMonitor: React.FC = () => {
           justifyContent: 'space-between',
           alignItems: 'center'
         }}>
-          {/* Chain多选框 - 放置在表格内部左上方 */}
+          {/* Chain多选框 */}
           <div style={{
             display: 'flex',
             flexWrap: 'wrap',
@@ -590,7 +609,7 @@ const PriceMonitor: React.FC = () => {
             ))}
           </div>
           
-          {/* Token多选框 - 放置在表格内部右上方 */}
+          {/* 代币对选择器 */}
           <div style={{
             display: 'flex',
             flexWrap: 'wrap',
@@ -641,13 +660,13 @@ const PriceMonitor: React.FC = () => {
         
         <div style={{ 
           overflowX: 'auto', 
-          overflowY: 'auto', // 确保垂直滚动正常工作
+          overflowY: 'auto',
           flex: 1, 
           display: 'flex', 
           flexDirection: 'column',
-          backgroundColor: '#121212', // 添加滚动容器背景色
-          height: '100%', // 确保容器占满可用高度
-          position: 'relative' // 帮助正确计算滚动区域
+          backgroundColor: '#121212',
+          height: '100%',
+          position: 'relative'
         }}>
           {isLoading && tableData.length === 0 ? (
             <div style={{ 
@@ -660,7 +679,7 @@ const PriceMonitor: React.FC = () => {
             }}>
               加载价格数据中...
               <div style={{ marginTop: '10px', fontSize: '12px' }}>
-                选中的链: {selectedChains.join(', ')} | 选中的代币: {selectedTokens.join(', ')}
+                选中的链: {selectedChains.join(', ')} | 代币: {selectedTokens.map(t => t.replace('-', '/')).join(', ')}
               </div>
             </div>
           ) : error ? (
@@ -674,7 +693,7 @@ const PriceMonitor: React.FC = () => {
             }}>
               {error}
               <div style={{ marginTop: '10px', fontSize: '12px', color: '#aaa' }}>
-                选中的链: {selectedChains.join(', ')} | 选中的代币: {selectedTokens.join(', ')}
+                选中的链: {selectedChains.join(', ')} | 代币: {selectedTokens.map(t => t.replace('-', '/')).join(', ')}
               </div>
             </div>
           ) : (
@@ -682,21 +701,21 @@ const PriceMonitor: React.FC = () => {
               width: '100%', 
               borderCollapse: 'collapse', 
               fontSize: '14px',
-              tableLayout: 'fixed', // 固定表格布局
+              tableLayout: 'fixed',
               flex: 1
             }}>
               <colgroup>
-                <col style={{ width: '25%' }} /> {/* SOURCE 列宽 */}
-                <col style={{ width: '25%' }} /> {/* Chain 列宽 */}
-                <col style={{ width: '25%' }} /> {/* Symbol 列宽 */}
-                <col style={{ width: '25%' }} /> {/* Price 列宽 */}
+                <col style={{ width: '25%' }} />
+                <col style={{ width: '25%' }} />
+                <col style={{ width: '25%' }} />
+                <col style={{ width: '25%' }} />
               </colgroup>
               <thead style={{ 
                 position: 'sticky', 
                 top: 0, 
                 zIndex: 1, 
                 backgroundColor: '#121212', 
-                boxShadow: '0 1px 0 #333' // 添加阴影替代边框，更美观
+                boxShadow: '0 1px 0 #333'
               }}>
                 <tr style={{ 
                   borderBottom: '1px solid #333', 
@@ -717,42 +736,50 @@ const PriceMonitor: React.FC = () => {
                     const chainId = selectedChains.find(chain => 
                       getChainDisplayName(chain) === item.chain
                     );
-                    return chainId !== undefined;
+                    
+                    // 处理代币选择
+                    const isSelectedToken = selectedTokens.includes('ETH-USDT') && item.token === 'ETH/USDT' || 
+                                          selectedTokens.includes('ETH-USDC') && item.token === 'ETH/USDC';
+                    
+                    return chainId !== undefined && isSelectedToken;
                   })
                   .map((item, index) => (
-                  <tr key={index} style={{ 
-                    borderBottom: '1px solid #222',
-                    backgroundColor: index % 2 === 0 ? '#151515' : '#121212',
-                    color: '#fff'
-                  }}>
-                    <td style={{ padding: '14px 12px', textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {item.source || 'N/A'}
-                    </td>
-                    <td style={{ padding: '14px 12px', textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {item.chain || 'N/A'}
-                    </td>
-                    <td style={{ padding: '14px 12px', textAlign: 'left', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {item.token || 'N/A'}
-                    </td>
-                    <td style={{ padding: '14px 12px', textAlign: 'right', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      ${formatPrice(item.price || 0)}
-                    </td>
-                  </tr>
+                    <tr key={index} style={{ 
+                      borderBottom: '1px solid #222',
+                      backgroundColor: index % 2 === 0 ? '#151515' : '#121212',
+                      color: '#fff'
+                    }}>
+                      <td style={{ padding: '14px 12px', textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {item.source || 'N/A'}
+                      </td>
+                      <td style={{ padding: '14px 12px', textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {item.chain || 'N/A'}
+                      </td>
+                      <td style={{ padding: '14px 12px', textAlign: 'left', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {item.token || 'N/A'}
+                      </td>
+                      <td style={{ padding: '14px 12px', textAlign: 'right', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        ${formatPrice(item.price || 0)}
+                      </td>
+                    </tr>
                 ))}
                 {tableData.filter(item => {
                   const chainId = selectedChains.find(chain => 
                     getChainDisplayName(chain) === item.chain
                   );
-                  return chainId !== undefined;
+                  
+                  const isSelectedToken = selectedTokens.includes('ETH-USDT') && item.token === 'ETH/USDT' || 
+                                        selectedTokens.includes('ETH-USDC') && item.token === 'ETH/USDC';
+                  
+                  return chainId !== undefined && isSelectedToken;
                 }).length === 0 && (
                   <tr>
                     <td colSpan={4} style={{ padding: '14px 12px', textAlign: 'center', color: '#999' }}>
-                      未选择任何链或没有数据
+                      未选择任何链或代币，或没有数据
                     </td>
                   </tr>
                 )}
               </tbody>
-              {/* 添加表格底部填充元素，确保底部背景色一致 */}
               <tfoot style={{ backgroundColor: '#121212' }}>
                 <tr><td colSpan={4} style={{ height: '1px' }}></td></tr>
               </tfoot>
