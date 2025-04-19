@@ -3,6 +3,10 @@
 /pictures
 /public
 /dapp/node_modules
+/dapp/move/build
+/dapp/move/Move.lock
+
+
 
 
 
