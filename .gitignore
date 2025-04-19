@@ -1,5 +1,8 @@
 /.vscode
-/dapp
 /docs
 /pictures
 /public
+/dapp/node_modules
+
+
+
