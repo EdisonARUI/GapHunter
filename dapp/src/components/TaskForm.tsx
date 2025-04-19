@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { useCurrentAccount } from '@mysten/dapp-kit';
 import { TaskConfig } from '../types/task';
 
@@ -28,9 +28,18 @@ import suiTokenIcon from '../asset/images/token/sui.png'; // SUI图标
 
 interface TaskFormProps {
   onSubmit: (task: Omit<TaskConfig, 'id' | 'last_alert'>) => void;
+  initialValues?: {
+    chain1?: string;
+    chain2?: string;
+    token1?: string;
+    token2?: string;
+    threshold?: number;
+    cooldown?: number;
+  } | null;
 }
 
-export default function TaskForm({ onSubmit }: TaskFormProps) {
+// 使用forwardRef包装组件以支持ref
+const TaskForm = forwardRef(({ onSubmit, initialValues }: TaskFormProps, ref) => {
   const currentAccount = useCurrentAccount();
   const [chain1, setChain1] = useState<string>('ethereum');
   const [chain2, setChain2] = useState<string>('sui');
@@ -108,6 +117,39 @@ export default function TaskForm({ onSubmit }: TaskFormProps) {
       setToken1('');
     }
   }, [token2]);
+
+  // 应用initialValues
+  useEffect(() => {
+    if (initialValues) {
+      if (initialValues.chain1) setChain1(initialValues.chain1);
+      if (initialValues.chain2) setChain2(initialValues.chain2);
+      if (initialValues.token1) setToken1(initialValues.token1);
+      if (initialValues.token2) setToken2(initialValues.token2);
+      if (initialValues.threshold) setThreshold(initialValues.threshold);
+      if (initialValues.cooldown) setCooldown(initialValues.cooldown);
+    }
+  }, [initialValues]);
+
+  // 暴露组件方法给父组件
+  useImperativeHandle(ref, () => ({
+    // 可以添加更多方法供父组件调用
+    resetForm: () => {
+      setChain1('ethereum');
+      setChain2('sui');
+      setToken1('SUI');
+      setToken2('USDT');
+      setThreshold(5);
+      setCooldown(300);
+    },
+    setFormValues: (values: any) => {
+      if (values.chain1) setChain1(values.chain1);
+      if (values.chain2) setChain2(values.chain2);
+      if (values.token1) setToken1(values.token1);
+      if (values.token2) setToken2(values.token2);
+      if (values.threshold) setThreshold(values.threshold);
+      if (values.cooldown) setCooldown(values.cooldown);
+    }
+  }));
 
   // 使用本地图片的区块链选项
   const chainOptions = [
@@ -621,7 +663,7 @@ export default function TaskForm({ onSubmit }: TaskFormProps) {
                   </div>
                 )}
               </div>
-      </div>
+            </div>
 
             {/* Token 2 自定义下拉选择器 */}
             <div style={{ flex: 1 }}>
@@ -649,7 +691,7 @@ export default function TaskForm({ onSubmit }: TaskFormProps) {
                     )}
                   </div>
                   <span>▼</span>
-      </div>
+                </div>
 
                 {dropdownState.token2 && (
                   <div style={dropdownMenuStyle}>
@@ -690,43 +732,43 @@ export default function TaskForm({ onSubmit }: TaskFormProps) {
         <div style={{ marginBottom: '16px' }}>
           <label style={labelStyle}>
             Price Difference Threshold (%)
-        </label>
-        <input
-          type="number"
-          value={threshold}
-          onChange={(e) => setThreshold(Number(e.target.value))}
-          min="0.1"
-          step="0.1"
+          </label>
+          <input
+            type="number"
+            value={threshold}
+            onChange={(e) => setThreshold(Number(e.target.value))}
+            min="0.1"
+            step="0.1"
             style={{
               ...inputStyle,
               backgroundColor: '#252525',
               color: '#FFFFFF',
               borderColor: '#333333'
             }}
-        />
-      </div>
+          />
+        </div>
 
         <div style={{ marginBottom: '16px' }}>
           <label style={labelStyle}>
             Cooldown Period (seconds)
-        </label>
-        <input
-          type="number"
-          value={cooldown}
-          onChange={(e) => setCooldown(Number(e.target.value))}
-          min="60"
-          step="60"
+          </label>
+          <input
+            type="number"
+            value={cooldown}
+            onChange={(e) => setCooldown(Number(e.target.value))}
+            min="60"
+            step="60"
             style={{
               ...inputStyle,
               backgroundColor: '#252525',
               color: '#FFFFFF',
               borderColor: '#333333'
             }}
-        />
-      </div>
+          />
+        </div>
 
-      <button
-        type="submit"
+        <button
+          type="submit"
           disabled={!currentAccount}
           style={{
             width: '100%',
@@ -740,8 +782,10 @@ export default function TaskForm({ onSubmit }: TaskFormProps) {
           }}
         >
           Create Task
-      </button>
-    </form>
+        </button>
+      </form>
     </div>
   );
-} 
+});
+
+export default TaskForm; 
