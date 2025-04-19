@@ -3,9 +3,8 @@ import { Container, Heading } from "@radix-ui/themes";
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import Layout from "./components/Layout";
 import CreateTask from "./pages/CreateTask";
-import TestPage from "./pages/TestPage";
-import SimpleLayout from "./pages/SimpleLayout";
 import PriceMonitor from "./pages/PriceMonitor";
+import History from "./pages/History";
 
 function App() {
   const currentAccount = useCurrentAccount();
@@ -13,20 +12,13 @@ function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/test" element={<TestPage />} />
-        <Route path="/simple" element={<SimpleLayout />} />
         <Route path="*" element={
           <Layout>
             {currentAccount ? (
               <Routes>
                 <Route path="/create-task" element={<CreateTask />} />
                 <Route path="/monitor" element={<PriceMonitor />} />
-                <Route path="/history" element={
-                  <Container>
-                    <Heading size="6">History</Heading>
-                    <p className="mt-4 text-gray-600">Coming Soon</p>
-                  </Container>
-                } />
+                <Route path="/history" element={<History />} />
                 <Route path="/settings" element={
                   <Container>
                     <Heading size="6">Settings</Heading>
