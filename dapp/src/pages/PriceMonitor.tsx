@@ -5,34 +5,6 @@ import { formatDistance } from 'date-fns';
 // 该组件封装了enhancedPriceMonitor的功能，提供多链价格监控能力
 import priceDataProvider, { PriceData, PriceComparisonData, TableRowData } from '../priceMonitor/priceDataProvider';
 
-// 调试工具，帮助确认日志功能工作正常
-const DebugLogger = {
-  logServerInfo: () => {
-    console.log('🔧 调试信息: PriceMonitor组件已加载');
-    console.log(`🔧 当前环境: ${process.env.NODE_ENV}`);
-    
-    // 尝试一些priceDataProvider的方法，触发日志
-    setTimeout(() => {
-      try {
-        console.log('🔧 尝试触发priceDataProvider日志...');
-        // 使用getSupportedPairs方法，这不会进行网络请求，但会触发日志
-        const pairs = priceDataProvider.getSupportedPairs();
-        console.log('🔧 支持的交易对:', pairs);
-      } catch (err) {
-        console.error('🔧 触发日志时出错:', err);
-      }
-    }, 1000);
-  },
-  
-  logError: (message: string, error: unknown) => {
-    console.error(`❌ ${message}:`, error instanceof Error ? error.message : String(error));
-    // 如果是浏览器环境，尝试使用特定的控制台API
-    if (typeof window !== 'undefined') {
-      console.trace('错误堆栈:');
-    }
-  }
-};
-
 // 导入币种图标
 import suiTokenIcon from '../asset/images/token/sui.png';
 import ethTokenIcon from '../asset/images/token/eth.png';
@@ -113,13 +85,9 @@ const PriceMonitor: React.FC = () => {
   const [supportedPairs, setSupportedPairs] = useState<{chains: string[], tokens: string[]}>({
     chains: [], tokens: []
   });
-  const [debugMode, setDebugMode] = useState<boolean>(true);
   
   // 初始化价格数据提供器
   useEffect(() => {
-    // 调用调试日志工具
-    DebugLogger.logServerInfo();
-    
     const initDataProvider = async () => {
       try {
         console.log('🔍 初始化价格数据提供器...');
@@ -481,69 +449,6 @@ const PriceMonitor: React.FC = () => {
       flexDirection: 'column',
       backgroundColor: '#121212' // 确保容器背景色一致
     }}>
-      {/* 调试面板 */}
-      {debugMode && (
-        <div style={{
-          position: 'fixed',
-          top: '10px',
-          right: '10px',
-          zIndex: 9999,
-          backgroundColor: 'rgba(0,0,0,0.8)',
-          color: '#fff',
-          padding: '10px',
-          borderRadius: '4px',
-          fontSize: '12px',
-          maxWidth: '400px',
-          maxHeight: '300px',
-          overflow: 'auto'
-        }}>
-          <div><strong>调试信息</strong> <button onClick={() => setDebugMode(false)}>关闭</button></div>
-          <div>isLoading: {isLoading ? '是' : '否'}</div>
-          <div>错误: {error || '无'}</div>
-          <div>选中链: {selectedChains.join(', ')}</div>
-          <div>选中代币: {selectedTokens.join(', ')}</div>
-          <div>支持的链: {supportedPairs.chains.join(', ')}</div>
-          <div>价格数据条数: {priceData.length}</div>
-          <div>比较数据条数: {comparisonData.length}</div>
-          <div>表格数据条数: {tableData.length}</div>
-          <div>最后更新: {lastUpdated.toLocaleTimeString()}</div>
-          <div>测试模式: {priceDataProvider.getTestMode?.() ? '开启' : '关闭'}</div>
-          <div style={{marginTop: '10px', display: 'flex', gap: '5px', flexWrap: 'wrap'}}>
-            <button onClick={fetchPrices}>强制刷新数据</button>
-            <button onClick={async () => {
-              try {
-                setIsLoading(true);
-                console.log("🔄 重新初始化价格数据提供器...");
-                // 重置状态
-                await priceDataProvider.initialize();
-                // 重新获取支持的交易对
-                const pairs = priceDataProvider.getSupportedPairs();
-                console.log("✅ 重新初始化完成，支持的交易对:", pairs);
-                setSupportedPairs(pairs);
-                // 刷新数据
-                await fetchPrices();
-              } catch (err) {
-                console.error("❌ 重新初始化失败:", err);
-                setError("重新初始化价格数据提供器失败");
-                setIsLoading(false);
-              }
-            }}>重新初始化</button>
-            <button onClick={() => {
-              if (priceDataProvider.setTestMode) {
-                const isTestMode = priceDataProvider.getTestMode?.() || false;
-                priceDataProvider.setTestMode(!isTestMode);
-                // 强制刷新界面
-                setLastUpdated(new Date());
-                // 获取新数据
-                fetchPrices();
-              }
-            }}>
-              {priceDataProvider.getTestMode?.() ? '关闭测试模式' : '开启测试模式'}
-            </button>
-          </div>
-        </div>
-      )}
-      
       <div style={{ 
         backgroundColor: '#121212', 
         borderRadius: '8px 8px 0 0', 
