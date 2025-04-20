@@ -10,6 +10,7 @@ module gaphunter::liquidity {
     use sui::clock::{Self, Clock};
     use sui::table::{Self, Table};
     use gaphunter::mycoin::MYCOIN;
+    use sui::event;
 
     /// 错误码
     const E_INSUFFICIENT_BALANCE: u64 = 0;
@@ -41,6 +42,22 @@ module gaphunter::liquidity {
     /// 管理员权限结构
     struct AdminCap has key {
         id: UID
+    }
+
+    // 定义质押事件结构
+    struct StakeEvent has copy, drop {
+        user: address,
+        amount: u64,
+        total_staked: u64,
+        timestamp: u64
+    }
+    
+    // 定义解质押事件结构
+    struct UnstakeEvent has copy, drop {
+        user: address,
+        amount: u64,
+        remaining: u64,
+        timestamp: u64
     }
 
     // 初始化函数
@@ -100,6 +117,21 @@ module gaphunter::liquidity {
             };
             table::add(&mut pool.stakes, sender, new_stake);
         };
+
+        // 最后发送质押事件
+        let total_staked = if (table::contains(&pool.stakes, sender)) {
+            let info = table::borrow(&pool.stakes, sender);
+            info.amount
+        } else {
+            amount
+        };
+        
+        event::emit(StakeEvent {
+            user: sender,
+            amount: amount,
+            total_staked: total_staked,
+            timestamp: current_time
+        });
     }
 
     /// 提取代币（包括收益）
@@ -112,29 +144,48 @@ module gaphunter::liquidity {
         let sender = tx_context::sender(ctx);
         assert!(table::contains(&pool.stakes, sender), E_NO_STAKE_FOUND);
         
-        let stake_info = table::borrow_mut(&mut pool.stakes, sender);
         let current_time = clock::timestamp_ms(clock);
         
-        // 计算收益
-        let reward = calculate_reward(stake_info.amount, stake_info.last_reward_time, current_time);
-        let total_available = stake_info.amount + reward;
+        // 首先获取质押信息进行计算
+        let stake_info = table::borrow(&pool.stakes, sender);
+        let current_amount = stake_info.amount;
+        let stake_time = stake_info.stake_time;
+        
+        let reward = calculate_reward(current_amount, stake_info.last_reward_time, current_time);
+        let total_available = current_amount + reward;
         
         // 确保有足够的余额可提取
         assert!(amount <= total_available, E_INSUFFICIENT_BALANCE);
         
-        // 更新质押信息
-        stake_info.amount = total_available - amount;
-        stake_info.last_reward_time = current_time;
+        // 计算提取后剩余金额
+        let remaining = total_available - amount;
         
-        // 如果余额为0，删除质押记录
-        if (stake_info.amount == 0) {
-            let StakeInfo { amount: _, stake_time: _, last_reward_time: _ } = table::remove(&mut pool.stakes, sender);
+        // 处理质押记录 - 先删除旧记录
+        let should_remove = remaining == 0;
+        table::remove(&mut pool.stakes, sender);
+        
+        // 如果有剩余金额，添加新记录
+        if (!should_remove) {
+            let new_stake_info = StakeInfo {
+                amount: remaining,
+                stake_time: stake_time,
+                last_reward_time: current_time
+            };
+            table::add(&mut pool.stakes, sender, new_stake_info);
         };
         
         // 从流动性池中提取代币
         let out_balance = balance::split(&mut pool.total_liquidity, amount);
         let out_coin = coin::from_balance(out_balance, ctx);
         transfer::public_transfer(out_coin, sender);
+
+        // 发送解质押事件
+        event::emit(UnstakeEvent {
+            user: sender,
+            amount,
+            remaining,
+            timestamp: current_time
+        });
     }
 
     /// 查询质押信息

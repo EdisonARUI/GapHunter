@@ -39,8 +39,7 @@ module gaphunter::price {
         if  (epoch > last + cool) {
             task_module::update_last_alert(task, epoch);
 
-            let max: u64 = (thres * MAX_PRICE_CHANGE) / 100;
-            let abnormal: bool = price > max;
+            let abnormal: bool = price >= thres;
 
             event::emit(PriceAlertEvent {
                 task_id: sui::object::id(task),
