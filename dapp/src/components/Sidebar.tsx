@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutGrid, LineChart, History, Settings, Coins } from 'lucide-react';
+import { LayoutGrid, LineChart, History, Coins } from 'lucide-react';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -12,8 +12,7 @@ export default function Sidebar({ isOpen }: SidebarProps) {
     { path: 'create-task', label: 'Task', icon: <LayoutGrid size={20} /> },
     { path: 'monitor', label: 'Monitor', icon: <LineChart size={20} /> },
     { path: 'history', label: 'History', icon: <History size={20} /> },
-    { path: 'liquidity', label: 'Liquidity', icon: <Coins size={20} /> },
-    { path: 'settings', label: 'Settings', icon: <Settings size={20} /> }
+    { path: 'liquidity', label: 'Liquidity', icon: <Coins size={20} /> }
   ];
 
   return (

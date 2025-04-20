@@ -4,6 +4,9 @@ import { useState, useEffect, useRef } from "react";
 import Sidebar from "./Sidebar";
 import { Menu } from 'lucide-react';
 import { Outlet } from 'react-router-dom';
+import { useCurrentAccount } from '@mysten/dapp-kit';
+import { Text } from '@radix-ui/themes';
+import PriceAlertListener from './PriceAlertListener';
 
 interface LayoutProps {
   children?: React.ReactNode;
@@ -29,6 +32,26 @@ export default function Layout({ children }: LayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [titleWidth, setTitleWidth] = useState(160); // 默认标题宽度估计值
   const titleRef = useRef<HTMLDivElement>(null);
+  const currentAccount = useCurrentAccount();
+  const [isMobile, setIsMobile] = useState(false);
+
+  // 检测是否为移动设备
+  useEffect(() => {
+    const checkIfMobile = () => {
+      setIsMobile(window.innerWidth < 768); // 小于768px视为移动设备
+    };
+    
+    // 初始检测
+    checkIfMobile();
+    
+    // 监听窗口大小变化
+    window.addEventListener('resize', checkIfMobile);
+    
+    // 清理函数
+    return () => {
+      window.removeEventListener('resize', checkIfMobile);
+    };
+  }, []);
 
   // 测量标题宽度
   useEffect(() => {
@@ -78,10 +101,11 @@ export default function Layout({ children }: LayoutProps) {
     <div style={{ 
       display: 'flex', 
       flexDirection: 'column', 
-      minHeight: '100vh', 
-      backgroundColor: '#121212' // 使用与设计风格指南一致的主背景色
+      minHeight: '100vh',
+      backgroundColor: '#0F0F0F', 
+      color: '#FFFFFF'
     }}>
-      {/* Header - Full width across the top */}
+      {/* Header */}
       <header style={{ 
         height: '64px', 
         backgroundColor: '#2563eb',
@@ -139,50 +163,46 @@ export default function Layout({ children }: LayoutProps) {
         </div>
       </header>
 
-      {/* Main content area with sidebar and content */}
+      {/* Main Content */}
       <div style={{ 
         display: 'flex', 
-        flexGrow: 1, 
-        marginTop: '64px',
-        backgroundColor: '#121212' // 确保主区域背景色一致
+        flex: 1,
+        flexDirection: isMobile ? 'column' : 'row',
+        marginTop: '64px' // 为固定header留出空间
       }}>
         {/* Sidebar */}
-        <div 
-          style={{ 
-            width: isSidebarOpen ? `${sidebarWidth}px` : '72px',
-            backgroundColor: '#1E1E1E', // 使用与设计风格指南一致的卡片背景色
-            borderRight: '1px solid #2C2C2C', // 使用设计风格指南中的边框颜色
-            transition: 'width 0.3s ease',
-            position: 'fixed',
-            top: '64px',
-            bottom: 0,
-            left: 0,
-            zIndex: 50,
-            height: 'calc(100vh - 64px)'
-          }}
-        >
+        <nav style={{
+          width: isMobile ? '100%' : (isSidebarOpen ? `${sidebarWidth}px` : '72px'),
+          backgroundColor: '#1A1A1A',
+          padding: '16px',
+          transition: 'width 0.3s ease'
+        }}>
           <Sidebar isOpen={isSidebarOpen} />
-        </div>
+        </nav>
 
         {/* Main Content Area */}
-        <div style={{ 
+        <main style={{ 
           flex: 1, 
-          marginLeft: isSidebarOpen ? `${sidebarWidth}px` : '72px',
-          transition: 'margin-left 0.3s ease',
-          backgroundColor: '#121212', // 使用与设计风格指南一致的主背景色
-          minHeight: 'calc(100vh - 64px)' // 确保内容区域至少占满整个可视区域
+          padding: '24px 16px',
+          backgroundColor: '#121212'
         }}>
-          <main style={{ 
-            flex: 1, 
-            padding: '24px',
-            backgroundColor: '#121212' // 确保主内容区背景色一致
-          }}>
-            <Container style={{ backgroundColor: '#121212' }} className="content-container">
-              {children || <Outlet />}
-            </Container>
-          </main>
-        </div>
+          {currentAccount && <PriceAlertListener />}
+          <Outlet />
+        </main>
       </div>
+
+      {/* Footer */}
+      <footer style={{
+        backgroundColor: '#1A1A1A',
+        padding: '16px',
+        textAlign: 'center',
+        color: '#94A3B8',
+        fontSize: '14px'
+      }}>
+        <Container>
+          <Text>GapHunter &copy; 2023 - Keeping an eye on cross-chain price gaps</Text>
+        </Container>
+      </footer>
     </div>
   );
 } 
