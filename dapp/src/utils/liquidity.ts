@@ -386,7 +386,7 @@ export async function mintGusdt(
     }, {
       onSuccess: (data: any) => {
         if (data && data.digest) {
-          setSuccessOperation(`铸造 ${displayAmount} gUSDT`);
+          setSuccessOperation(`Mint ${displayAmount} gUSDT`);
           setTransactionId(data.digest);
           setShowSuccessDialog(true);
           if (onSuccess) onSuccess();
@@ -515,7 +515,7 @@ export async function stakeGusdt(
       }, {
         onSuccess: (data: any) => {
           if (data && data.digest) {
-            setSuccessOperation(`质押 ${displayAmount} gUSDT`);
+            setSuccessOperation(`Stake ${displayAmount} gUSDT`);
             setTransactionId(data.digest);
             setShowSuccessDialog(true);
             if (onSuccess) onSuccess();
@@ -606,7 +606,7 @@ export async function unstakeGusdt(
     }, {
       onSuccess: (data: any) => {
         if (data && data.digest) {
-          setSuccessOperation(`解质押 ${displayAmount} gUSDT`);
+          setSuccessOperation(`Unstake ${displayAmount} gUSDT`);
           setTransactionId(data.digest);
           setShowSuccessDialog(true);
           if (onSuccess) onSuccess();

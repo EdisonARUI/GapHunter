@@ -16,7 +16,7 @@ import {
 } from "../utils/liquidity";
 import { ReloadIcon, ArrowRightIcon, PlusIcon, MinusIcon } from "@radix-ui/react-icons";
 
-// 设计系统常量
+// Design system constants
 const COLORS = {
   background: "#121212",
   cardBg: "#1A1A1A",
@@ -34,7 +34,7 @@ const COLORS = {
   border: "#333333"
 };
 
-// 设计系统间距
+// Design system spacing
 const SPACING = {
   xs: "4px",
   sm: "8px",
@@ -43,7 +43,7 @@ const SPACING = {
   xl: "32px"
 };
 
-// 设计系统布局样式
+// Design system layout styles
 const styles = {
   container: {
     backgroundColor: COLORS.background,
@@ -185,19 +185,19 @@ const styles = {
 };
 
 export function Liquidity() {
-  // 获取当前钱包账户
+  // Get current wallet account
   const currentAccount = useCurrentAccount();
-  // 获取Sui客户端
+  // Get Sui client
   const suiClient = useSuiClient();
-  // 获取交易执行器
+  // Get transaction executor
   const { mutate: signAndExecuteTransaction } = useSignAndExecuteTransaction();
 
-  // 用户输入状态
+  // User input states
   const [mintAmount, setMintAmount] = useState<string>("10000");
   const [stakeAmount, setStakeAmount] = useState<string>("1000");
   const [unstakeAmount, setUnstakeAmount] = useState<string>("100");
 
-  // 应用状态
+  // Application states
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [isStakeLoading, setIsStakeLoading] = useState<boolean>(false);
@@ -206,19 +206,19 @@ export function Liquidity() {
   const [isBalanceLoading, setIsBalanceLoading] = useState<boolean>(false);
   const [balanceError, setBalanceError] = useState<string | null>(null);
 
-  // 交易成功对话框状态
+  // Transaction success dialog states
   const [showSuccessDialog, setShowSuccessDialog] = useState<boolean>(false);
   const [transactionId, setTransactionId] = useState<string>("");
   const [successOperation, setSuccessOperation] = useState<string>("");
 
-  // 获取钱包余额和质押信息的回调函数
+  // Callback function to fetch wallet balance and stake information
   const fetchData = async () => {
     if (!currentAccount || !suiClient) {
       return;
     }
 
     try {
-      // 获取钱包余额
+      // Fetch wallet balance
       await fetchWalletBalance(
         suiClient as any, 
         currentAccount.address, 
@@ -229,7 +229,7 @@ export function Liquidity() {
         }
       );
 
-      // 获取质押信息
+      // Fetch stake information
       await fetchStakeInfo(
         suiClient as any, 
         currentAccount.address, 
@@ -240,7 +240,7 @@ export function Liquidity() {
         }
       );
       
-      // 查询最近交易帮助诊断
+      // Query recent transactions for diagnostics
       await queryRecentTransactions(
         suiClient as any,
         currentAccount.address
@@ -250,18 +250,18 @@ export function Liquidity() {
     }
   };
 
-  // 当钱包连接或改变时获取数据
+  // Fetch data when wallet connects or changes
   useEffect(() => {
     if (currentAccount) {
       fetchData();
     } else {
-      // 清除数据
+      // Clear data
       setWalletBalance(null);
       setStakeInfo(null);
     }
   }, [currentAccount, suiClient]);
 
-  // 处理Mint操作
+  // Handle Mint operation
   const handleMint = async () => {
     if (!currentAccount || !suiClient) {
       setError("Please connect wallet first");
@@ -274,10 +274,10 @@ export function Liquidity() {
       return;
     }
 
-    // 计算真实的铸造数量（考虑精度）
+    // Calculate actual mint amount (considering precision)
     const actualMintAmount = Math.floor(mintAmountValue * DECIMAL_MULTIPLIER);
 
-    // 准备回调函数
+    // Prepare callbacks
     const callbacks = {
       setIsLoading,
       setError,
@@ -285,14 +285,14 @@ export function Liquidity() {
       setTransactionId,
       setShowSuccessDialog,
       onSuccess: () => {
-        // 延迟执行fetchData以确保区块链状态更新
+        // Delay fetchData to ensure blockchain state is updated
         setTimeout(() => {
           fetchData();
         }, 2000);
       }
     };
 
-    // 调用mintGusdt函数
+    // Call mintGusdt function
     await mintGusdt(
       suiClient as any,
       currentAccount.address,
@@ -303,7 +303,7 @@ export function Liquidity() {
     );
   };
 
-  // 处理质押操作
+  // Handle Stake operation
   const handleStake = async () => {
     if (!currentAccount || !suiClient) {
       setError("Please connect wallet first");
@@ -316,10 +316,10 @@ export function Liquidity() {
       return;
     }
 
-    // 计算真实的质押数量（考虑精度）
+    // Calculate actual stake amount (considering precision)
     const actualStakeAmount = Math.floor(stakeAmountValue * DECIMAL_MULTIPLIER);
 
-    // 准备回调函数
+    // Prepare callbacks
     const callbacks = {
       setIsLoading,
       setError,
@@ -327,10 +327,10 @@ export function Liquidity() {
       setTransactionId,
       setShowSuccessDialog,
       onSuccess: () => {
-        // 延迟执行fetchData以确保区块链状态更新
+        // Delay fetchData to ensure blockchain state is updated
         setTimeout(async () => {
           await fetchData();
-          // 再次延迟检查，确保区块链状态已更新
+          // Delay check again to ensure blockchain state is updated
           setTimeout(async () => {
             if (!stakeInfo && currentAccount && suiClient) {
               await fetchStakeInfo(
@@ -348,7 +348,7 @@ export function Liquidity() {
       }
     };
 
-    // 调用stakeGusdt函数
+    // Call stakeGusdt function
     await stakeGusdt(
       suiClient as any,
       currentAccount.address,
@@ -361,7 +361,7 @@ export function Liquidity() {
     );
   };
 
-  // 处理解质押操作
+  // Handle Unstake operation
   const handleUnstake = async () => {
     if (!currentAccount || !suiClient) {
       setError("Please connect wallet first");
@@ -374,22 +374,22 @@ export function Liquidity() {
       return;
     }
 
-    // 计算真实的解质押数量（考虑精度）
+    // Calculate actual unstake amount (considering precision)
     const actualUnstakeAmount = Math.floor(unstakeAmountValue * DECIMAL_MULTIPLIER);
 
-    // 如果没有质押信息，提示用户但继续尝试
+    // If no stake information, prompt user but continue trying
     if (!stakeInfo) {
-      // 创建一个临时的stakeInfo对象
+      // Create a temporary stakeInfo object
       const tempStakeInfo: StakeInfo = {
-        amount: actualUnstakeAmount,  // 设置为要解质押的金额
+        amount: actualUnstakeAmount,  // Set to unstake amount
         reward: 0,
-        object_id: "unknown"  // 实际上应由后端查找
+        object_id: "unknown"  // Should be looked up by backend
       };
       
-      // 提示用户我们没有质押信息
+      // Prompt user we don't have stake information
       setError("No stake information detected, but will attempt to unstake. If it fails, please refresh stake data and try again.");
       
-      // 准备回调函数
+      // Prepare callbacks
       const callbacks = {
         setIsLoading,
         setError,
@@ -397,7 +397,7 @@ export function Liquidity() {
         setTransactionId,
         setShowSuccessDialog,
         onSuccess: () => {
-          // 延迟执行fetchData以确保区块链状态更新
+          // Delay fetchData to ensure blockchain state is updated
           setTimeout(() => {
             fetchData();
           }, 2000);
@@ -405,7 +405,7 @@ export function Liquidity() {
       };
 
       try {
-        // 尝试先获取最新的质押信息
+        // Try to get latest stake information first
         await fetchStakeInfo(
           suiClient as any, 
           currentAccount.address, 
@@ -418,10 +418,10 @@ export function Liquidity() {
           }
         );
         
-        // 如果刷新后获取到质押信息，使用它；否则使用临时信息
+        // If refreshed and got stake info, use it; otherwise use temporary info
         const stakeInfoToUse = stakeInfo || tempStakeInfo;
         
-        // 调用unstakeGusdt函数
+        // Call unstakeGusdt function
         await unstakeGusdt(
           suiClient as any,
           currentAccount.address,
@@ -438,7 +438,7 @@ export function Liquidity() {
       return;
     }
 
-    // 准备回调函数
+    // Prepare callbacks
     const callbacks = {
       setIsLoading,
       setError,
@@ -446,14 +446,14 @@ export function Liquidity() {
       setTransactionId,
       setShowSuccessDialog,
       onSuccess: () => {
-        // 延迟执行fetchData以确保区块链状态更新
+        // Delay fetchData to ensure blockchain state is updated
         setTimeout(() => {
           fetchData();
         }, 2000);
       }
     };
 
-    // 调用unstakeGusdt函数
+    // Call unstakeGusdt function
     await unstakeGusdt(
       suiClient as any,
       currentAccount.address,
@@ -465,7 +465,7 @@ export function Liquidity() {
     );
   };
 
-  // 渲染钱包状态
+  // Render wallet status
   const renderWalletStatus = () => {
     return (
       <Flex 
@@ -506,9 +506,9 @@ export function Liquidity() {
     );
   };
 
-  // 渲染账户信息
+  // Render account information
   const renderAccountInfo = () => {
-    // 钱包余额显示
+    // Wallet balance display
     const renderBalance = () => {
       if (!currentAccount) {
         return <Badge color="yellow">Please connect wallet</Badge>;
@@ -533,7 +533,7 @@ export function Liquidity() {
       );
     };
 
-    // 质押信息显示
+    // Stake information display
     const renderStakeInfo = () => {
       if (isStakeLoading) {
         return <span style={{ display: "inline-block", width: "16px", height: "16px" }} className="spinner" />;
@@ -592,7 +592,7 @@ export function Liquidity() {
     );
   };
 
-  // 渲染铸造部分
+  // Render mint section
   const renderMintSection = () => {
     return (
       <Card style={styles.sectionCard}>
@@ -627,7 +627,7 @@ export function Liquidity() {
     );
   };
 
-  // 渲染质押部分
+  // Render stake section
   const renderStakeSection = () => {
     return (
       <Card style={styles.sectionCard}>
@@ -662,7 +662,7 @@ export function Liquidity() {
     );
   };
 
-  // 渲染解质押部分
+  // Render unstake section
   const renderUnstakeSection = () => {
     return (
       <Card style={styles.sectionCard}>
@@ -693,12 +693,6 @@ export function Liquidity() {
             Unstake
           </Button>
         </Flex>
-        
-        {!stakeInfo && currentAccount && (
-          <Text size="1" style={{ color: COLORS.warning, marginTop: SPACING.sm }}>
-            No stake detected, but you can still attempt to unstake
-          </Text>
-        )}
       </Card>
     );
   };
@@ -710,18 +704,18 @@ export function Liquidity() {
           Liquidity Management
         </Heading>
         
-        {/* 钱包状态显示 */}
+        {/* Wallet status display */}
         {renderWalletStatus()}
         
-        {/* 账户信息显示 */}
+        {/* Account information display */}
         {renderAccountInfo()}
         
-        {/* 操作部分 */}
+        {/* Operation sections */}
         {renderMintSection()}
         {renderStakeSection()}
         {renderUnstakeSection()}
         
-        {/* 错误提示 */}
+        {/* Error display */}
         {error && !error.includes("stake info") && (
           <div style={styles.errorText}>
             {error}
@@ -729,7 +723,7 @@ export function Liquidity() {
         )}
       </div>
       
-      {/* 交易成功对话框 */}
+      {/* Transaction success dialog */}
       <TransactionDialog
         open={showSuccessDialog}
         onOpenChange={setShowSuccessDialog}
@@ -737,7 +731,7 @@ export function Liquidity() {
         operation={successOperation}
       />
       
-      {/* 全局样式 */}
+      {/* Global styles */}
       <style>
         {`
           @keyframes spin {
