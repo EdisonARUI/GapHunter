@@ -69,14 +69,14 @@ export function TransactionDialog({ open, onOpenChange, transactionId, operation
                 <path d="M7 10L9 12L13 8" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </div>
-            {operation || '操作'}成功
+            {operation || '操作'} successfully
           </Dialog.Title>
           <Dialog.Description style={{ marginTop: '16px', fontSize: '14px', color: '#94A3B8' }}>
-            您的交易已成功提交到区块链
+          Your transaction has been successfully submitted to the blockchain
           </Dialog.Description>
           
           <div style={{ margin: '20px 0', padding: '12px', backgroundColor: 'rgba(255, 255, 255, 0.05)', borderRadius: '6px', overflow: 'hidden' }}>
-            <div style={{ fontSize: '12px', color: '#94A3B8', marginBottom: '4px' }}>交易ID:</div>
+            <div style={{ fontSize: '12px', color: '#94A3B8', marginBottom: '4px' }}>Hash ID:</div>
             <div style={styles.monospaceText}>
               {transactionId}
             </div>
@@ -87,7 +87,7 @@ export function TransactionDialog({ open, onOpenChange, transactionId, operation
               onClick={() => onOpenChange(false)}
               style={styles.buttonPrimary}
             >
-              确定
+              Ok
             </button>
           </div>
           
