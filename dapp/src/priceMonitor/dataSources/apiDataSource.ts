@@ -14,7 +14,7 @@ const API_ENDPOINTS = {
 
 // API数据源类
 export class ApiDataSource implements PriceDataSource {
-  public readonly name = 'API服务';
+  public readonly name = 'API';
   public readonly priority = 3; // 第三优先级
 
   private apiKeys: Record<string, string>;
@@ -156,7 +156,7 @@ export class ApiDataSource implements PriceDataSource {
     
     // 构造GraphQL查询
     const query = `{
-      pool(id: "${config.poolId.toLowerCase()}") {
+      pool(id: "${config.poolId?.toLowerCase()}") {
         token0 {
           symbol
           decimals
@@ -177,7 +177,15 @@ export class ApiDataSource implements PriceDataSource {
     }
     
     const pool = response.data.data.pool;
-    const sqrtPriceX96 = BigInt(pool.sqrtPrice);
+    
+    // 使用安全的方式转换sqrtPrice (确保它是字符串)
+    let sqrtPriceX96: bigint;
+    try {
+      sqrtPriceX96 = BigInt(pool.sqrtPrice);
+    } catch (error) {
+      console.error("无法将sqrtPrice转换为BigInt:", pool.sqrtPrice);
+      throw new Error(`无效的sqrtPrice格式: ${pool.sqrtPrice}`);
+    }
     
     // 获取代币精度
     const token0Decimals = parseInt(pool.token0.decimals);
@@ -189,6 +197,7 @@ export class ApiDataSource implements PriceDataSource {
     
     // 计算价格（考虑代币顺序和精度）
     // sqrtPriceX96 = sqrt(price) * 2^96
+    // 安全地将bigint转换为number，适用于大多数现代浏览器
     const sqrtPrice = Number(sqrtPriceX96) / Math.pow(2, 96);
     
     // price = sqrtPrice^2 * 10^(decimals1 - decimals0)

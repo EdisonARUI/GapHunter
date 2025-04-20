@@ -12,7 +12,7 @@ import axios from 'axios';
 
 // DEX合约数据源类
 export class DexContractSource implements PriceDataSource {
-  public readonly name = 'DEX合约';
+  public readonly name = 'DEX';
   public readonly priority = 1; // 最高优先级
 
   private providers: Map<string, ethers.providers.JsonRpcProvider>;

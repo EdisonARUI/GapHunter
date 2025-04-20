@@ -8,7 +8,7 @@ import { IChainlinkAggregatorABI } from '../contractAbis';
 
 // Chainlink预言机数据源类
 export class ChainlinkSource implements PriceDataSource {
-  public readonly name = 'Chainlink预言机';
+  public readonly name = 'Chainlink Oracle';
   public readonly priority = 2; // 第二优先级
 
   private providers: Map<string, ethers.providers.JsonRpcProvider>;
